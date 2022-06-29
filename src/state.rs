@@ -1,6 +1,6 @@
 pub struct State {
-    pieces: Vec<u8>,
-    enemy_pieces: Vec<u8>,
+    pieces: [u8; 9],
+    enemy_pieces: [u8; 9],
 }
 
 impl std::fmt::Display for State {
@@ -29,14 +29,14 @@ impl std::fmt::Display for State {
 }
 
 impl State {
-    pub fn new(pieces: Option<Vec<u8>>, enemy_pieces: Option<Vec<u8>>) -> State {
+    pub fn new(pieces: Option<[u8; 9]>, enemy_pieces: Option<[u8; 9]>) -> State {
         let pieces = match pieces {
             Some(pieces) => pieces,
-            None => vec![0; 9],
+            None => [0; 9],
         };
         let enemy_pieces = match enemy_pieces {
             Some(enemy_pieces) => enemy_pieces,
-            None => vec![0; 9],
+            None => [0; 9],
         };
 
         State {
@@ -45,7 +45,7 @@ impl State {
         }
     }
 
-    pub fn piece_count(&self, pieces: &Vec<u8>) -> usize {
+    pub fn piece_count(&self, pieces: &[u8; 9]) -> usize {
         // count the number of pieces where element == 1
         pieces.iter().filter(|&x| *x == 1).count()
     }

@@ -1,11 +1,11 @@
 use crate::state::State;
-use rand::Rng;
+use rand::prelude::SliceRandom;
 
 pub fn random(state: &State) -> u8 {
-    let legal_actions = state.legal_actions();
-    let action = rand::thread_rng().gen_range(0..legal_actions.len());
-
-    legal_actions[action]
+    *state
+        .legal_actions()
+        .choose(&mut rand::thread_rng())
+        .unwrap()
 }
 
 pub fn alpha_beta(state: &State) -> u8 {
