@@ -1,20 +1,20 @@
 use crate::state::State;
 use rand::prelude::SliceRandom;
 
-pub fn random(state: &State) -> u8 {
+pub fn random(state: &mut State) -> u8 {
     *state
         .legal_actions()
         .choose(&mut rand::thread_rng())
         .unwrap()
 }
 
-pub fn alpha_beta(state: &State) -> u8 {
+pub fn alpha_beta(state: &mut State) -> u8 {
     let mut best_action = 0;
     let mut alpha = -1;
     let mut str = [String::from(""), String::from("")];
 
     for action in state.legal_actions() {
-        let score = -alpha_beta_evaluate(&state.next(action), -1, -alpha);
+        let score = -alpha_beta_evaluate(&mut state.next(action), -1, -alpha);
         if score > alpha {
             best_action = action;
             alpha = score;
@@ -29,7 +29,7 @@ pub fn alpha_beta(state: &State) -> u8 {
     best_action
 }
 
-fn alpha_beta_evaluate(state: &State, mut alpha: i8, beta: i8) -> i8 {
+fn alpha_beta_evaluate(state: &mut State, mut alpha: i8, beta: i8) -> i8 {
     if state.is_lose() {
         return -1;
     }
@@ -39,7 +39,7 @@ fn alpha_beta_evaluate(state: &State, mut alpha: i8, beta: i8) -> i8 {
     }
 
     for action in state.legal_actions() {
-        let score = -alpha_beta_evaluate(&state.next(action), -beta, -alpha);
+        let score = -alpha_beta_evaluate(&mut state.next(action), -beta, -alpha);
         if score > alpha {
             alpha = score;
         }
@@ -52,13 +52,13 @@ fn alpha_beta_evaluate(state: &State, mut alpha: i8, beta: i8) -> i8 {
     alpha
 }
 
-pub fn mini_max(state: &State) -> u8 {
+pub fn mini_max(state: &mut State) -> u8 {
     let mut best_action = 0;
     let mut best_score = -1;
     let mut str = [String::from(""), String::from("")];
 
     for action in state.legal_actions() {
-        let score = -mini_max_evaluate(&state.next(action));
+        let score = -mini_max_evaluate(&mut state.next(action));
         if score > best_score {
             best_action = action;
             best_score = score;
@@ -73,7 +73,7 @@ pub fn mini_max(state: &State) -> u8 {
     best_action
 }
 
-fn mini_max_evaluate(state: &State) -> i8 {
+fn mini_max_evaluate(state: &mut State) -> i8 {
     if state.is_lose() {
         return -1;
     }
@@ -85,7 +85,7 @@ fn mini_max_evaluate(state: &State) -> i8 {
     let mut best_score = -1;
 
     for action in state.legal_actions() {
-        let score = -mini_max_evaluate(&state.next(action));
+        let score = -mini_max_evaluate(&mut state.next(action));
         if score > best_score {
             best_score = score;
         }
@@ -94,7 +94,7 @@ fn mini_max_evaluate(state: &State) -> i8 {
     best_score
 }
 
-fn mini_max_plus_evaluate(state: &State, limit: i8) -> i8 {
+pub fn mini_max_plus_evaluate(state: &mut State, limit: i8) -> i8 {
     if state.is_lose() {
         return -1;
     }
@@ -106,7 +106,7 @@ fn mini_max_plus_evaluate(state: &State, limit: i8) -> i8 {
     let mut best_score = -1;
 
     for action in state.legal_actions() {
-        let score = -mini_max_plus_evaluate(&state.next(action), -best_score);
+        let score = -mini_max_plus_evaluate(&mut state.next(action), -best_score);
         if score > best_score {
             best_score = score;
         }

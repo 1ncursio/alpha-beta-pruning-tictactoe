@@ -1,6 +1,19 @@
+pub const DXY: [(i8, i8); 8] = [
+    (1, 0),
+    (1, 1),
+    (0, 1),
+    (-1, 1),
+    (-1, 0),
+    (-1, -1),
+    (0, -1),
+    (1, -1),
+];
+
 pub struct State {
-    pieces: [u8; 9],
-    enemy_pieces: [u8; 9],
+    pub pieces: [u8; 36],
+    pub enemy_pieces: [u8; 36],
+    pub depth: i32,
+    pub pass_end: bool,
 }
 
 impl std::fmt::Display for State {
@@ -29,80 +42,149 @@ impl std::fmt::Display for State {
 }
 
 impl State {
-    pub fn new(pieces: Option<[u8; 9]>, enemy_pieces: Option<[u8; 9]>) -> State {
+    pub fn new(pieces: Option<[u8; 36]>, enemy_pieces: Option<[u8; 36]>, depth: i32) -> State {
         let pieces = match pieces {
             Some(pieces) => pieces,
-            None => [0; 9],
+            None => {
+                let mut pieces = [0; 36];
+                pieces[14] = 1;
+                pieces[21] = 1;
+                pieces
+            }
         };
         let enemy_pieces = match enemy_pieces {
             Some(enemy_pieces) => enemy_pieces,
-            None => [0; 9],
+            None => {
+                let mut enemy_pieces = [0; 36];
+                enemy_pieces[15] = 1;
+                enemy_pieces[20] = 1;
+                enemy_pieces
+            }
         };
 
         State {
             pieces,
             enemy_pieces,
+            depth,
+            pass_end: false,
         }
     }
 
-    pub fn piece_count(&self, pieces: &[u8; 9]) -> usize {
+    pub fn piece_count(&self, pieces: &[u8; 36]) -> usize {
         // count the number of pieces where element == 1
         pieces.iter().filter(|&x| *x == 1).count()
     }
 
     pub fn is_lose(&self) -> bool {
-        if self.is_comp(0, 0, 1, 1) || self.is_comp(0, 2, 1, -1) {
-            return true;
-        }
-
-        for i in 0..3 {
-            if self.is_comp(0, i, 1, 0) || self.is_comp(i, 0, 0, 1) {
-                return true;
-            }
-        }
-
-        false
-    }
-
-    pub fn is_comp(&self, mut x: i8, mut y: i8, dx: i8, dy: i8) -> bool {
-        for _ in 0..3 {
-            if y < 0 || y > 2 || x < 0 || x > 2 || self.enemy_pieces[(x + y * 3) as usize] == 0 {
-                return false;
-            }
-            x += dx;
-            y += dy;
-        }
-
-        true
+        self.is_done() && self.piece_count(&self.pieces) < self.piece_count(&self.enemy_pieces)
     }
 
     pub fn is_draw(&self) -> bool {
-        self.piece_count(&self.pieces) + self.piece_count(&self.enemy_pieces) == 9
+        self.is_done() && self.piece_count(&self.pieces) == self.piece_count(&self.enemy_pieces)
     }
 
     pub fn is_done(&self) -> bool {
-        self.is_lose() || self.is_draw()
+        self.pass_end || self.piece_count(&self.pieces) + self.piece_count(&self.enemy_pieces) == 36
     }
 
     pub fn next(&self, action: u8) -> State {
-        let mut pieces = self.pieces.clone();
-        pieces[action as usize] = 1;
-        State::new(Some(self.enemy_pieces.clone()), Some(pieces))
+        // println!("next!");
+        let mut state = State::new(
+            Some(self.pieces.clone()),
+            Some(self.enemy_pieces.clone()),
+            self.depth + 1,
+        );
+        if action != 36 {
+            state.is_legal_action_xy((action % 6) as i8, (action / 6) as i8, true);
+        }
+
+        let w = state.pieces;
+        state.pieces = state.enemy_pieces;
+        state.enemy_pieces = w;
+
+        if action == 36 && state.legal_actions()[0] == 36 {
+            state.pass_end = true;
+        }
+        state
     }
 
-    pub fn legal_actions(&self) -> Vec<u8> {
+    pub fn legal_actions(&mut self) -> Vec<u8> {
         let mut actions: Vec<u8> = vec![];
 
-        for i in 0..9 {
-            if self.pieces[i] == 0 && self.enemy_pieces[i] == 0 {
-                actions.push(i as u8);
+        for j in 0..6 {
+            for i in 0..6 {
+                if self.is_legal_action_xy(i, j, false) {
+                    actions.push((i + j * 6) as u8);
+                }
             }
+        }
+
+        if actions.len() == 3 {
+            actions.push(36);
         }
 
         actions
     }
 
+    fn is_legal_action_xy(&mut self, x: i8, y: i8, flip: bool) -> bool {
+        if self.enemy_pieces[(x + y * 6) as usize] == 1 || self.pieces[(x + y * 6) as usize] == 1 {
+            return false;
+        }
+
+        if flip {
+            self.pieces[(x + y * 6) as usize] = 1;
+        }
+
+        let mut flag = false;
+        for (dx, dy) in DXY {
+            if self.is_legal_action_xy_dxy(x, y, dx, dy, flip) {
+                flag = true;
+            }
+        }
+
+        flag
+    }
+
+    fn is_legal_action_xy_dxy(&mut self, mut x: i8, mut y: i8, dx: i8, dy: i8, flip: bool) -> bool {
+        x += dx;
+        y += dy;
+        if y < 0 || 5 < y || x < 0 || 5 < x || self.enemy_pieces[(x + y * 6) as usize] != 1 {
+            return false;
+        }
+
+        for _ in 0..6 {
+            if y < 0
+                || 5 < y
+                || x < 0
+                || 5 < x
+                || (self.enemy_pieces[(x + y * 6) as usize] == 0
+                    && self.pieces[(x + y * 6) as usize] == 0)
+            {
+                return false;
+            }
+
+            if self.pieces[(x + y * 6) as usize] == 1 {
+                if flip {
+                    for _ in 0..6 {
+                        x -= dx;
+                        y -= dy;
+                        if self.pieces[(x + y * 6) as usize] == 1 {
+                            return true;
+                        }
+                        self.pieces[(x + y * 6) as usize] = 1;
+                        self.enemy_pieces[(x + y * 6) as usize] = 0;
+                    }
+                }
+                return true;
+            }
+            x += dx;
+            y += dy;
+        }
+
+        false
+    }
+
     pub fn is_first_player(&self) -> bool {
-        self.piece_count(&self.pieces) == self.piece_count(&self.enemy_pieces)
+        self.depth % 2 == 0
     }
 }
